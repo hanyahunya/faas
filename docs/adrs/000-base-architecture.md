@@ -1,6 +1,6 @@
 # ADR 000: Base Architecture
 
-* **Status**: Superseded (by [ADR-001](./001-agent-uds-communication.md))
+* **Status**: Superseded (by [ADR-001](./001-agent-async-pooling.md))
 * **Date**: 2025-12-13
 * **Technical Story**: FaaS 플랫폼의 초기 모델 설계 - 역할 분리, 스케일링 전략, 그리고 데이터 특성에 따른 저장소 선정
 
