@@ -1,0 +1,48 @@
+spring:
+  application:
+    name: registry
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  datasource:
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+server:
+  port: 8080
+
+jwt:
+  access-token-expiration: 15m
+  refresh-token-expiration: 7d
+cookie:
+  same-site: Lax
+  path: /
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: ${REG_DB_URL}
+    username: ${REG_DB_USERNAME}
+    password: ${REG_DB_PASSWORD}
+  jpa:
+    database-platform: org.hibernate.dialect.MySQL8Dialect
+    hibernate:
+      ddl-auto: none
+    generate-ddl: false
+    show-sql: false
+  data:
+    redis:
+      host: ${REG_REDIS_HOST}
+      port: ${REG_REDIS_PORT}
+      password: ${REG_REDIS_PASSWORD}
+
+
+encoder:
+  secret: ${ENCODER_SECRET}
+jwt:
+  access-token-secret: ${ACCESS_TOKEN_SECRET}
+  refresh-token-secret: ${REFRESH_TOKEN_SECRET}
+cookie:
+  domain: hanyahunya.com
+  secure: true
