@@ -14,7 +14,7 @@ spring:
         webflux:
           routes:
             - id: register-service
-              uri: lb://REGISTER-SERVICE
+              uri: lb://REGISTRY-SERVICE
               predicates:
                 - Path=/auth/**, /token/**, /function/**
               filters:
