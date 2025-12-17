@@ -1,0 +1,72 @@
+server:
+  port: 8080
+spring:
+  application:
+    name: gateway-service
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.security.reactive.ReactiveUserDetailsServiceAutoConfiguration
+  cloud:
+    gateway:
+      server:
+        webflux:
+          routes:
+            - id: register-service
+              uri: lb://REGISTER-SERVICE
+              predicates:
+                - Path=/auth/**, /token/**, /function/**
+              filters:
+                - StripPrefix=0
+            - id: invoker-service
+              uri: lb://INVOKER-SERVICE
+              predicates:
+                - Path=/invoke
+              filters:
+                - StripPrefix=0
+
+eureka:
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${random.value}:${server.port}
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+  data:
+    redis:
+      host: ${GAT_REDIS_HOST}
+      port: ${GAT_REDIS_PORT}
+      password: ${GAT_REDIS_PW}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: "http://${GAT_EUR_USERNAME}:${GAT_EUR_PASSWORD}@${GAT_EUR_HOST}:${GAT_EUR_PORT}/eureka/"
+
+cors:
+  allowed-origin-patterns:
+    - "https://hanyahunya.com"
+  allowed-methods:
+    - "GET"
+    - "POST"
+    - "PUT"
+    - "DELETE"
+    - "PATCH"
+    - "OPTIONS"
+  allowed-headers:
+    - "Authorization"
+    - "Content-Type"
+    - "X-Requested-With"
+  exposed-headers:
+    - "Authorization"
+  allow-credentials: true
+
+jwt:
+  access-token-secret: ${ACCESS_TOKEN_SECRET}
