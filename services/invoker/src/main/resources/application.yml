@@ -1,0 +1,6 @@
+spring:
+  application:
+    name: invoker
+  threads:
+    virtual:
+      enabled: true
