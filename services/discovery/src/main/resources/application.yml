@@ -1,0 +1,37 @@
+﻿server:
+  port: 8761
+
+spring:
+  application:
+    name: discovery-service
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+
+eureka:
+  instance:
+    hostname: localhost
+  client:
+    register-with-eureka: false
+    fetch-registry: false
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+user:
+  admin:
+    username: ${EUREKA_ADMIN_USERNAME}
+    password: ${EUREKA_ADMIN_PASSWORD}
+  gateway:
+    username: ${EUREKA_GAT_USERNAME}
+    password: ${EUREKA_GAT_USERNAME}
+  register:
+    username: ${EUREKA_REG_USERNAME}
+    password: ${EUREKA_REG_PASSWORD}
+  invoker:
+    username: ${EUREKA_INV_USERNAME}
+    password: ${EUREKA_INV_PASSWORD}
+  provisioner:
+    username: ${EUREKA_PRO_USERNAME}
+    password: ${EUREKA_PRO_USERNAME}
