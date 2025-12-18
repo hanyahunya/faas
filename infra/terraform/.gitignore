@@ -1,0 +1,14 @@
+# .gitignore
+
+# 모든 tfvars 파일 무시 (기본)
+*.tfvars
+
+# 예외적으로 auto.tfvars는 허용 (아키텍처 공유용)
+!*.auto.tfvars
+
+# Terraform 관련 파일
+.terraform/
+.terraform.lock.hcl
+*.tfstate
+*.tfstate.backup
+*.log
