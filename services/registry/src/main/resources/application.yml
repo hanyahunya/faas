@@ -44,11 +44,16 @@ spring:
       host: ${REG_REDIS_HOST}
       port: ${REG_REDIS_PORT}
       password: ${REG_REDIS_PASSWORD}
-
+  cloud:
+    aws:
+      region:
+        static: ${REG_AWS_REGION}
+      s3:
+        bucket: ${REG_AWS_BUCKET}
 eureka:
   client:
     service-url:
-      defaultZone: "http://${GAT_EUR_USERNAME}:${GAT_EUR_PASSWORD}@${GAT_EUR_HOST}:${GAT_EUR_PORT}/eureka/"
+      defaultZone: "http://${REG_EUR_USERNAME}:${REG_EUR_PASSWORD}@${REG_EUR_HOST}:${REG_EUR_PORT}/eureka/"
 
 encoder:
   secret: ${ENCODER_SECRET}

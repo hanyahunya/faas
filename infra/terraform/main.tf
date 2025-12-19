@@ -68,9 +68,9 @@ resource "aws_eip" "nat_eip" {
 }
 
 resource "aws_nat_gateway" "nat_gw" {
-  count         = var.is_dev_mode ? 0 : 1 # 개발 모드면 생성 안 함
+  count         = var.is_dev_mode ? 0 : 1
   allocation_id = aws_eip.nat_eip[0].id
-  subnet_id     = aws_subnet.public_subnet_a.id # NAT는 Public에 존재해야 함
+  subnet_id     = aws_subnet.public_subnet_a.id
   tags          = { Name = "Main-NAT-GW" }
   depends_on    = [aws_internet_gateway.igw]
 }
@@ -100,7 +100,6 @@ resource "aws_route_table_association" "pub_c" {
 # 개발 모드일 때는 Private Subnet도 IGW를 타게 해서 인터넷 되게 함 (임시 Public 변환 효과)
 resource "aws_route_table" "private_rt" {
   vpc_id = aws_vpc.main_vpc.id
-
   route {
     cidr_block     = "0.0.0.0/0"
     # 개발모드면 IGW, 배포모드면 NAT 사용
@@ -196,6 +195,7 @@ resource "aws_iam_role" "ec2_s3_access_role" {
   })
 }
 
+# [수정] 정책 리소스에 두 버킷의 ARN을 모두 추가하여 EC2가 둘 다 접근 가능하게 함
 resource "aws_iam_policy" "s3_access_policy" {
   name = "faas_s3_policy"
   policy = jsonencode({
@@ -209,8 +209,12 @@ resource "aws_iam_policy" "s3_access_policy" {
         "s3:DeleteObject"
       ]
       Resource = [
-        "arn:aws:s3:::${var.s3_bucket_name}",
-        "arn:aws:s3:::${var.s3_bucket_name}/*"
+        # 함수 코드 버킷
+        "arn:aws:s3:::${var.s3_function_bucket_name}",
+        "arn:aws:s3:::${var.s3_function_bucket_name}/*",
+        # 로그 버킷
+        "arn:aws:s3:::${var.s3_log_bucket_name}",
+        "arn:aws:s3:::${var.s3_log_bucket_name}/*"
       ]
     }]
   })
@@ -226,9 +230,18 @@ resource "aws_iam_instance_profile" "ec2_profile" {
   role = aws_iam_role.ec2_s3_access_role.name
 }
 
-resource "aws_s3_bucket" "faas_bucket" {
-  bucket = var.s3_bucket_name
-  tags   = { Name = "Faas-S3" }
+# 함수 코드 저장용 버킷
+resource "aws_s3_bucket" "function_bucket" {
+  bucket = var.s3_function_bucket_name
+  force_destroy = true
+  tags   = { Name = "Faas-Function-Code-S3" }
+}
+
+#  로그 저장용 버킷
+resource "aws_s3_bucket" "log_bucket" {
+  bucket = var.s3_log_bucket_name
+  force_destroy = true
+  tags   = { Name = "Faas-Logs-S3" }
 }
 
 resource "aws_db_subnet_group" "faas_db_subnet_group" {
@@ -395,7 +408,9 @@ locals {
   user_data_script = <<-EOF
     #!/bin/bash
     apt-get update
-    apt-get install -y ca-certificates curl gnupg git
+    
+    apt-get install -y ca-certificates curl gnupg git mysql-client
+
     install -m 0755 -d /etc/apt/keyrings
     curl -fsSL https://download.docker.com/linux/ubuntu/gpg | gpg --dearmor -o /etc/apt/keyrings/docker.gpg
     chmod a+r /etc/apt/keyrings/docker.gpg

@@ -35,7 +35,7 @@ public class User {
     @Column(name = "created_at", updatable = false)
     private LocalDateTime createdAt;
 
-    @Builder
+    @Builder(builderClassName = "SignupBuilder", builderMethodName = "signupBuilder")
     public User(String email, String password) {
         this.userId = UUID.randomUUID();
         this.email = email;
@@ -43,5 +43,10 @@ public class User {
         this.role = Role.ROLE_USER;
         this.status = Status.PENDING_APPROVAL;
         this.createdAt = LocalDateTime.now();
+    }
+
+    @Builder(builderClassName = "IdBuilder", builderMethodName = "idBuilder")
+    public User(UUID userId) {
+        this.userId = userId;
     }
 }
