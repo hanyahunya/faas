@@ -44,7 +44,12 @@ spring:
       host: ${REG_REDIS_HOST}
       port: ${REG_REDIS_PORT}
       password: ${REG_REDIS_PASSWORD}
-
+  cloud:
+    aws:
+      region:
+        static: ${REG_AWS_REGION}
+      s3:
+        bucket: ${REG_AWS_BUCKET}
 eureka:
   client:
     service-url:

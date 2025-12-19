@@ -11,7 +11,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-public class RegisterService implements RegisterUserUseCase {
+public class UserRegisterService implements RegisterUserUseCase {
     private final UserRepository userRepository;
 
     private final PasswordEncodePort encoder;
@@ -25,7 +25,7 @@ public class RegisterService implements RegisterUserUseCase {
                 user -> {
                     throw new EmailAlreadyExistsException();
                 });
-        User user = User.builder()
+        User user = User.signupBuilder()
                 .email(email)
                 .password(encoder.encode(command.password()))
                 .build();
