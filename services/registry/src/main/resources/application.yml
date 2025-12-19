@@ -48,7 +48,7 @@ spring:
 eureka:
   client:
     service-url:
-      defaultZone: "http://${GAT_EUR_USERNAME}:${GAT_EUR_PASSWORD}@${GAT_EUR_HOST}:${GAT_EUR_PORT}/eureka/"
+      defaultZone: "http://${REG_EUR_USERNAME}:${REG_EUR_PASSWORD}@${REG_EUR_HOST}:${REG_EUR_PORT}/eureka/"
 
 encoder:
   secret: ${ENCODER_SECRET}

@@ -25,7 +25,7 @@ user:
     password: ${EUREKA_ADMIN_PASSWORD}
   gateway:
     username: ${EUREKA_GAT_USERNAME}
-    password: ${EUREKA_GAT_USERNAME}
+    password: ${EUREKA_GAT_PASSWORD}
   register:
     username: ${EUREKA_REG_USERNAME}
     password: ${EUREKA_REG_PASSWORD}
@@ -34,4 +34,4 @@ user:
     password: ${EUREKA_INV_PASSWORD}
   provisioner:
     username: ${EUREKA_PRO_USERNAME}
-    password: ${EUREKA_PRO_USERNAME}
+    password: ${EUREKA_PRO_PASSWORD}
