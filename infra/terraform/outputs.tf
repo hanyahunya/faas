@@ -16,6 +16,3 @@ output "server_public_ips" {
 output "rds_endpoint" {
     value = aws_db_instance.faas_db.endpoint
 }
-output "s3_bucket_name" {
-    value = aws_s3_bucket.faas_bucket.bucket
-}
