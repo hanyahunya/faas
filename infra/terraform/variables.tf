@@ -20,8 +20,13 @@ variable "ssh_ip" {
   type        = string
 }
 
-variable "s3_bucket_name" {
-  description = "생성할 S3 버킷 이름 (전세계 고유값)"
+variable "s3_function_bucket_name" {
+  description = "함수 코드 저장용 버킷 이름"
+  type        = string
+}
+
+variable "s3_log_bucket_name" {
+  description = "로그 저장용 버킷 이름"
   type        = string
 }
 
