@@ -21,7 +21,8 @@ public class SecurityConfig {
 
     private static final String[] WHITE_LIST = {
             "/auth/**",
-            "/invoke/**"
+            "/invoke/**",
+            "/actuator/health"
     };
 
     @Bean

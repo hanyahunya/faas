@@ -27,6 +27,7 @@ import java.nio.charset.StandardCharsets;
 @Component
 @RequiredArgsConstructor
 public class AuthenticationFilter implements WebFilter {
+    
     @Value("${jwt.access-token-secret}")
     private String accessSecret;
 
@@ -34,7 +35,8 @@ public class AuthenticationFilter implements WebFilter {
 
     private static final String[] WHITELIST = {
             "/auth/",
-            "/invoke"
+            "/invoke",
+            "/actuator/health"
     };
 
     @PostConstruct
@@ -49,6 +51,11 @@ public class AuthenticationFilter implements WebFilter {
     public Mono<Void> filter(ServerWebExchange exchange, WebFilterChain chain) {
         ServerHttpRequest request = exchange.getRequest();
         String path = request.getURI().getPath();
+        String method = request.getMethod().name();
+        String clientIp = getClientIp(request); // IP 추출 메서드 사용
+
+        // 1. [요청 진입 로그] 모든 요청의 출발지 기록
+        log.info(">> [Request] IP=[{}], Method=[{}], Path=[{}]", clientIp, method, path);
 
         for (String allowedPath : WHITELIST) {
             if (path.startsWith(allowedPath)) {
@@ -56,7 +63,6 @@ public class AuthenticationFilter implements WebFilter {
             }
         }
 
-        // Authorization 헤더 존재여부
         if (!request.getHeaders().containsKey(HttpHeaders.AUTHORIZATION)) {
             return onError(exchange, "Authorization 헤더가 없습니다.");
         }
@@ -97,16 +103,21 @@ public class AuthenticationFilter implements WebFilter {
                                 return passThrough(exchange, chain, userId, role);
                             }));
                 })
-                .onErrorResume(e -> onError(exchange, "유효하지 않은 토큰입니다."));
+                .onErrorResume(e -> onError(exchange, "유효하지 않은 토큰입니다. (" + e.getMessage() + ")"));
     }
 
     private Mono<Void> passThrough(ServerWebExchange exchange, WebFilterChain chain, String userId, String role) {
-        ServerHttpRequest newRequest = exchange.getRequest().mutate()
+        ServerHttpRequest request = exchange.getRequest();
+        String clientIp = getClientIp(request);
+        String path = request.getURI().getPath();
+
+        ServerHttpRequest newRequest = request.mutate()
                 .header("X-User-Id", userId)
                 .header("X-User-Role", role)
                 .build();
 
-        log.info("인증에 성공했습니다. 사용자ID: {}", userId);
+        // 2. [인증 성공 로그] 누가 어디서 통과했는지 기록
+        log.info("<< [Auth Success] UserID=[{}], IP=[{}], Path=[{}]", userId, clientIp, path);
 
         return chain.filter(exchange.mutate().request(newRequest).build())
                 .contextWrite(ReactiveSecurityContextHolder.withAuthentication(
@@ -123,8 +134,31 @@ public class AuthenticationFilter implements WebFilter {
     }
 
     private Mono<Void> onError(ServerWebExchange exchange, String err) {
-        log.error("인증 에러: {}, 상태: {}", err, HttpStatus.UNAUTHORIZED);
+        ServerHttpRequest request = exchange.getRequest();
+        String clientIp = getClientIp(request);
+        String path = request.getURI().getPath();
+
+        // 3. [인증 실패 로그] 에러 원인과 요청자 정보 기록
+        log.error("!! [Auth Failed] Reason=[{}], IP=[{}], Path=[{}]", err, clientIp, path);
+
         exchange.getResponse().setStatusCode(HttpStatus.UNAUTHORIZED);
         return exchange.getResponse().setComplete();
+    }
+
+    /**
+     * 클라이언트 실제 IP 추출 (Nginx 등 프록시 대응)
+     */
+    private String getClientIp(ServerHttpRequest request) {
+        String ip = request.getHeaders().getFirst("X-Forwarded-For");
+        if (ip == null || ip.isEmpty()) {
+            ip = request.getHeaders().getFirst("Proxy-Client-IP");
+        }
+        if (ip == null || ip.isEmpty()) {
+            ip = request.getHeaders().getFirst("WL-Proxy-Client-IP");
+        }
+        if (ip == null || ip.isEmpty() && request.getRemoteAddress() != null) {
+            ip = request.getRemoteAddress().getAddress().getHostAddress();
+        }
+        return ip;
     }
 }
