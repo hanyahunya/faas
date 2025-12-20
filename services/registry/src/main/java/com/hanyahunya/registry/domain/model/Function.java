@@ -25,7 +25,10 @@ public class Function {
     @OnDelete(action = OnDeleteAction.CASCADE)
     private User user;
 
-    @Column(nullable = false)
+    @Column(name = "access_key", nullable = false)
+    private String accessKey;
+
+    @Column(name = "function_name", nullable = false)
     private String functionName;
 
     @Column(name = "description")
@@ -45,9 +48,10 @@ public class Function {
     private LocalDateTime createdAt;
 
     @Builder
-    public Function(UUID functionId, UUID userId, String functionName, String description, int timeout, Runtime runtime, String s3Key) {
+    public Function(UUID functionId, UUID userId, String accessKey, String functionName, String description, int timeout, Runtime runtime, String s3Key) {
         this.functionId = functionId;
         this.user = User.idBuilder().userId(userId).build();
+        this.accessKey = accessKey; // 추후 업데이트에 넣어서 사용자가 키 까먹었을때 대응 필요
         this.createdAt = LocalDateTime.now();
 
         update(functionName, description, timeout, runtime, s3Key);
