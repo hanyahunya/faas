@@ -232,16 +232,16 @@ resource "aws_iam_instance_profile" "ec2_profile" {
 
 # 함수 코드 저장용 버킷
 resource "aws_s3_bucket" "function_bucket" {
-  bucket = var.s3_function_bucket_name
+  bucket        = var.s3_function_bucket_name
   force_destroy = true
-  tags   = { Name = "Faas-Function-Code-S3" }
+  tags          = { Name = "Faas-Function-Code-S3" }
 }
 
 #  로그 저장용 버킷
 resource "aws_s3_bucket" "log_bucket" {
-  bucket = var.s3_log_bucket_name
+  bucket        = var.s3_log_bucket_name
   force_destroy = true
-  tags   = { Name = "Faas-Logs-S3" }
+  tags          = { Name = "Faas-Logs-S3" }
 }
 
 resource "aws_db_subnet_group" "faas_db_subnet_group" {
@@ -325,15 +325,21 @@ locals {
     "gateway" = [
       { port = 8080, cidr = [aws_vpc.main_vpc.cidr_block], desc = "Internal Access" }
     ]
+    # [수정] gRPC 포트 추가 (9091)
     "register" = [
-      { port = 8081, cidr = [aws_vpc.main_vpc.cidr_block], desc = "Internal Access" }
+      { port = 8081, cidr = [aws_vpc.main_vpc.cidr_block], desc = "Internal Access" },
+      { port = 9091, cidr = [aws_vpc.main_vpc.cidr_block], desc = "gRPC Internal Access" }
     ]
+    # [수정] gRPC 포트 추가 (9092)
     "invoker" = [
-      { port = 8082, cidr = [aws_vpc.main_vpc.cidr_block], desc = "Internal Access" }
+      { port = 8082, cidr = [aws_vpc.main_vpc.cidr_block], desc = "Internal Access" },
+      { port = 9092, cidr = [aws_vpc.main_vpc.cidr_block], desc = "gRPC Internal Access" }
     ]
+    # [수정] gRPC 포트 추가 (9094)
     "provisioner_agent" = [
       { port = 8083, cidr = [aws_vpc.main_vpc.cidr_block], desc = "Internal Access" },
-      { port = 8084, cidr = [aws_vpc.main_vpc.cidr_block], desc = "Internal Access" }
+      { port = 8084, cidr = [aws_vpc.main_vpc.cidr_block], desc = "Internal Access" },
+      { port = 9094, cidr = [aws_vpc.main_vpc.cidr_block], desc = "gRPC Internal Access" }
     ]
     "discovery" = [
       { port = 8761, cidr = [aws_vpc.main_vpc.cidr_block], desc = "Internal Access" }
