@@ -2,8 +2,10 @@ package com.hanyahunya.registry.application.service;
 
 import com.hanyahunya.registry.application.port.in.TokensResult;
 import com.hanyahunya.registry.application.port.in.token.RefreshTokenUseCase;
-import com.hanyahunya.registry.application.port.out.TokenEncodePort;
+import com.hanyahunya.registry.application.port.out.EncodeAdapterFactory;
+import com.hanyahunya.registry.application.port.out.EncodePort;
 import com.hanyahunya.registry.application.port.out.TokenProviderPort;
+import com.hanyahunya.registry.domain.model.EncodeType;
 import com.hanyahunya.registry.domain.model.Token;
 import com.hanyahunya.registry.domain.model.User;
 import com.hanyahunya.registry.domain.repository.TokenRepository;
@@ -16,11 +18,13 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class TokenService implements RefreshTokenUseCase {
     private final TokenProviderPort tokenProviderPort;
-    private final TokenEncodePort encoder;
+    private final EncodeAdapterFactory encodeFactory;
 
     private final TokenRepository tokenRepository;
 
     public TokensResult issueToken(User user) {
+        EncodePort encoder = encodeFactory.getAdapter(EncodeType.JWT_TOKEN);
+
         UUID tokenId = UUID.randomUUID();
         TokensResult tokens = tokenProviderPort.generateTokens(user.getUserId(), user.getRole(), tokenId);
 

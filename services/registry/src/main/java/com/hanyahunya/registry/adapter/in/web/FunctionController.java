@@ -1,7 +1,6 @@
 package com.hanyahunya.registry.adapter.in.web;
 
 import com.hanyahunya.registry.adapter.in.web.dto.FunctionRegisterRequest;
-import com.hanyahunya.registry.adapter.in.web.dto.FunctionRegisterResponse;
 import com.hanyahunya.registry.application.port.in.function.RegisterFunctionUseCase;
 import com.hanyahunya.registry.infra.security.UserPrincipal;
 import lombok.RequiredArgsConstructor;
@@ -22,14 +21,12 @@ public class FunctionController {
     private final RegisterFunctionUseCase registerFunctionUseCase;
 
     @PostMapping
-    public ResponseEntity<FunctionRegisterResponse> registerFunction(
+    public ResponseEntity<RegisterFunctionUseCase.Result> registerFunction(
             @AuthenticationPrincipal UserPrincipal user,
             @RequestBody FunctionRegisterRequest request
             ) {
         UUID userId = user.getUserId();
-        UUID functionId = registerFunctionUseCase.register(request.toCommand(userId));
-        return ResponseEntity.ok(
-                new FunctionRegisterResponse(functionId.toString(), "Function registered")
-        );
+        RegisterFunctionUseCase.Result response = registerFunctionUseCase.register(request.toCommand(userId));
+        return ResponseEntity.ok(response);
     }
 }

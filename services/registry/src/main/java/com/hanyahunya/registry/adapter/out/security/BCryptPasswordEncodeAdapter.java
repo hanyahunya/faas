@@ -1,12 +1,13 @@
 package com.hanyahunya.registry.adapter.out.security;
 
-import com.hanyahunya.registry.application.port.out.PasswordEncodePort;
+import com.hanyahunya.registry.application.port.out.EncodePort;
+import com.hanyahunya.registry.domain.model.EncodeType;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Component;
 
 @Component
-public class BCryptPasswordEncodeAdapter implements PasswordEncodePort {
+public class BCryptPasswordEncodeAdapter implements EncodePort {
     private final PasswordEncoder passwordEncoder = new BCryptPasswordEncoder();
 
     @Override
@@ -17,5 +18,10 @@ public class BCryptPasswordEncodeAdapter implements PasswordEncodePort {
     @Override
     public boolean matches(String data, String hashedData) {
         return passwordEncoder.matches(data, hashedData);
+    }
+
+    @Override
+    public EncodeType getEncodeType() {
+        return EncodeType.PASSWORD;
     }
 }

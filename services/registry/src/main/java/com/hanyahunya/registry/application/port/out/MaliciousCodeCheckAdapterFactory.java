@@ -22,7 +22,7 @@ public class MaliciousCodeCheckAdapterFactory {
     public MaliciousCodeCheckPort getAdapter(Runtime runtime) {
         MaliciousCodeCheckPort adapter = adapters.get(runtime);
         if (adapter == null) {
-            throw new IllegalArgumentException("unsupported provider type: " + runtime);
+            throw new IllegalArgumentException("unsupported type: " + runtime);
         }
         return adapter;
     }

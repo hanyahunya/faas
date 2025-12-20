@@ -2,9 +2,8 @@ package com.hanyahunya.registry.application.service;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hanyahunya.registry.application.port.in.function.RegisterFunctionUseCase;
-import com.hanyahunya.registry.application.port.out.MaliciousCodeCheckAdapterFactory;
-import com.hanyahunya.registry.application.port.out.MaliciousCodeCheckPort;
-import com.hanyahunya.registry.application.port.out.SourceStoragePort;
+import com.hanyahunya.registry.application.port.out.*;
+import com.hanyahunya.registry.domain.model.EncodeType;
 import com.hanyahunya.registry.domain.model.Function;
 import com.hanyahunya.registry.domain.model.Runtime;
 import com.hanyahunya.registry.domain.repository.FunctionRepository;
@@ -29,11 +28,13 @@ public class FunctionRegisterService implements RegisterFunctionUseCase {
     private final SourceStoragePort sourceStoragePort;
     private final MaliciousCodeCheckAdapterFactory maliciousCodeCheckAdapterFactory;
     private final ObjectMapper objectMapper;
+    private final EncodeAdapterFactory encodeFactory;
 
     @Override
     @Transactional
-    public UUID register(Command command) {
+    public Result register(Command command) {
         MaliciousCodeCheckPort maliciousCodeCheckPort = maliciousCodeCheckAdapterFactory.getAdapter(command.runtime());
+        EncodePort encodePort = encodeFactory.getAdapter(EncodeType.FUNCTION_KEY);
 
         if (!maliciousCodeCheckPort.isSafe(command.codeContent())) {
             throw new IllegalArgumentException("Malicious code detected.");
@@ -51,9 +52,13 @@ public class FunctionRegisterService implements RegisterFunctionUseCase {
         // S3 업로드
         sourceStoragePort.upload(zipBytes, s3Key);
 
+        // 함수 실행용 키 저장
+        String accessKey = UUID.randomUUID().toString().replace("-", "");
+
         Function function = Function.builder()
                 .functionId(functionId)
                 .userId(userId)
+                .accessKey(encodePort.encode(accessKey))
                 .functionName(command.functionName())
                 .description(command.description())
                 .runtime(command.runtime())
@@ -62,7 +67,7 @@ public class FunctionRegisterService implements RegisterFunctionUseCase {
 
         functionRepository.save(function);
         log.info("Function Registered: {} (ID: {})", command.functionName(), functionId);
-        return functionId;
+        return new Result(functionId, accessKey);
     }
 
     private byte[] createZipArtifact(UUID functionId, Command command) {

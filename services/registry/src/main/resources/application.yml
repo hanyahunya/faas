@@ -9,11 +9,16 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
   autoconfigure:
     exclude: org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
+  grpc:
+    server:
+      port: 9090
 
 eureka:
   instance:
     prefer-ip-address: true
     instance-id: ${spring.application.name}:${random.value}:${server.port}
+    metadata-map:
+      gRPC.port: ${spring.grpc.server.port}
   client:
     register-with-eureka: true
     fetch-registry: true
@@ -56,7 +61,8 @@ eureka:
       defaultZone: "http://${REG_EUR_USERNAME}:${REG_EUR_PASSWORD}@${REG_EUR_HOST}:${REG_EUR_PORT}/eureka/"
 
 encoder:
-  secret: ${ENCODER_SECRET}
+  token-secret: ${ENCODER_TOKEN_SECRET}
+  function-secret: ${ENCODER_FUNC_SECRET}
 jwt:
   access-token-secret: ${ACCESS_TOKEN_SECRET}
   refresh-token-secret: ${REFRESH_TOKEN_SECRET}
