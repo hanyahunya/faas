@@ -17,11 +17,15 @@ public class FunctionAuthService implements FunctionAuthUseCase {
 
     @Override
     @Transactional(readOnly = true)
-    public boolean authFunction(Command command) {
+    public Result authFunction(Command command) {
         EncodePort encodePort = encodeAdapterFactory.getAdapter(EncodeType.FUNCTION_KEY);
 
         return functionRepository.findById(command.functionId())
-                .map(function -> encodePort.matches(command.accessKey(), function.getAccessKey()))
-                .orElse(false);
+                .map(function -> {
+                    boolean isValid = encodePort.matches(command.accessKey(), function.getAccessKey());
+                    String s3Key = isValid ? function.getS3Key() : null;
+                    return new Result(isValid, s3Key);
+                })
+                .orElse(new Result(false, null));
     }
 }

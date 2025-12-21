@@ -20,10 +20,18 @@ public class FunctionAuthGrpcService extends FunctionAuthServiceGrpc.FunctionAut
     @Override
     public void verifyAccess(VerifyAccessRequest request, StreamObserver<VerifyAccessResponse> responseObserver) {
         boolean isValid = false;
+        String s3Key = "";
 
         try {
             UUID functionId = UUID.fromString(request.getFunctionId());
-            isValid = functionAuthUseCase.authFunction(new FunctionAuthUseCase.Command(functionId, request.getAccessKey()));
+
+            FunctionAuthUseCase.Result result = functionAuthUseCase.authFunction(
+                    new FunctionAuthUseCase.Command(functionId, request.getAccessKey())
+            );
+
+            isValid = result.isValid();
+            s3Key = result.s3Key() != null ? result.s3Key() : "";
+
         } catch (IllegalArgumentException e) {
             log.warn("Invalid UUID format in gRPC request: {}", request.getFunctionId());
         } catch (Exception e) {
@@ -32,6 +40,7 @@ public class FunctionAuthGrpcService extends FunctionAuthServiceGrpc.FunctionAut
 
         VerifyAccessResponse response = VerifyAccessResponse.newBuilder()
                 .setIsValid(isValid)
+                .setS3Key(s3Key)
                 .build();
 
         responseObserver.onNext(response);
