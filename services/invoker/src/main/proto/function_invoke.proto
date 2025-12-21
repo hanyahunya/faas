@@ -1,0 +1,22 @@
+syntax = "proto3";
+
+package com.hanyahunya.grpc;
+
+option java_multiple_files = true;
+option java_package = "com.hanyahunya.grpc";
+
+service AgentService {
+  rpc Execute (ExecuteRequest) returns (ExecuteResponse);
+}
+
+message ExecuteRequest {
+  string sock_path = 1;
+  string input_payload = 2;
+}
+
+message ExecuteResponse {
+  string result = 1;
+  bool success = 2;
+  int64 memory_usage = 3;
+  string error_message = 4;
+}

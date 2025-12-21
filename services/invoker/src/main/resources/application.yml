@@ -1,6 +1,54 @@
+server:
+  port: 8082
+
 spring:
   application:
-    name: invoker
+    name: invoker-service
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  autoconfigure:
+    exclude: org.springframework.boot.autoconfigure.security.servlet.UserDetailsServiceAutoConfiguration
   threads:
     virtual:
       enabled: true
+
+grpc:
+  server:
+    port: 9092
+  client:
+    registry-service:
+      address: discovery:///REGISTRY-SERVICE
+      negotiation-type: plaintext
+
+eureka:
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${random.value}:${server.port}
+    metadata-map:
+      gRPC.port: ${spring.grpc.server.port}
+  client:
+    register-with-eureka: true
+    fetch-registry: true
+
+---
+# todo mongoDB conn
+spring:
+  config:
+    activate:
+      on-profile: prod
+  data:
+    redis:
+      host: ${INV_REDIS_HOST}
+      port: ${INV_REDIS_PORT}
+      password: ${INV_REDIS_PASSWORD}
+  cloud:
+    aws:
+      region:
+        static: ${INV_AWS_REGION}
+      s3:
+        bucket: ${INV_AWS_BUCKET}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: "http://${INV_EUR_USERNAME}:${INV_EUR_PASSWORD}@${INV_EUR_HOST}:${INV_EUR_PORT}/eureka/"
