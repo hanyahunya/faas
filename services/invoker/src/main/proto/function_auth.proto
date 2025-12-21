@@ -1,0 +1,19 @@
+syntax = "proto3";
+
+package com.hanyahunya.grpc;
+
+option java_multiple_files = true;
+option java_package = "com.hanyahunya.grpc";
+
+service FunctionAuthService {
+  rpc VerifyAccess (VerifyAccessRequest) returns (VerifyAccessResponse);
+}
+
+message VerifyAccessRequest {
+  string function_id = 1;
+  string access_key = 2;
+}
+
+message VerifyAccessResponse {
+  bool is_valid = 1;
+}

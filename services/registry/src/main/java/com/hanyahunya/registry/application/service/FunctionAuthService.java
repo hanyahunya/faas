@@ -1,0 +1,27 @@
+package com.hanyahunya.registry.application.service;
+
+import com.hanyahunya.registry.application.port.in.function.FunctionAuthUseCase;
+import com.hanyahunya.registry.application.port.out.EncodeAdapterFactory;
+import com.hanyahunya.registry.application.port.out.EncodePort;
+import com.hanyahunya.registry.domain.model.EncodeType;
+import com.hanyahunya.registry.domain.repository.FunctionRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+public class FunctionAuthService implements FunctionAuthUseCase {
+    private final FunctionRepository functionRepository;
+    private final EncodeAdapterFactory encodeAdapterFactory;
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean authFunction(Command command) {
+        EncodePort encodePort = encodeAdapterFactory.getAdapter(EncodeType.FUNCTION_KEY);
+
+        return functionRepository.findById(command.functionId())
+                .map(function -> encodePort.matches(command.accessKey(), function.getAccessKey()))
+                .orElse(false);
+    }
+}

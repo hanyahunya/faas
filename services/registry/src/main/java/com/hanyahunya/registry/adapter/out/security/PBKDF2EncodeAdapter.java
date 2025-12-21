@@ -1,12 +1,12 @@
 package com.hanyahunya.registry.adapter.out.security;
 
-import com.hanyahunya.registry.application.port.out.TokenEncodePort;
+import com.hanyahunya.registry.application.port.out.EncodePort;
+import com.hanyahunya.registry.domain.model.EncodeType;
 import jakarta.annotation.PostConstruct;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.crypto.password.Pbkdf2PasswordEncoder;
-import org.springframework.stereotype.Component;
 
-public class PBKDF2TokenEncodeAdapter implements TokenEncodePort {
+public class PBKDF2EncodeAdapter implements EncodePort {
     private Pbkdf2PasswordEncoder passwordEncoder;
     @Value("${encoder.secret}")
     private String secret;
@@ -24,5 +24,10 @@ public class PBKDF2TokenEncodeAdapter implements TokenEncodePort {
     @Override
     public boolean matches(String data, String hashedData) {
         return passwordEncoder.matches(data, hashedData);
+    }
+
+    @Override
+    public EncodeType getEncodeType() {
+        return EncodeType.FUNCTION_KEY;
     }
 }

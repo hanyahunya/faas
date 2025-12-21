@@ -1,7 +1,8 @@
 plugins {
-	id 'java'
-	id 'org.springframework.boot' version '3.5.8'
-	id 'io.spring.dependency-management' version '1.1.7'
+    id 'java'
+    id 'org.springframework.boot' version '3.5.8'
+    id 'io.spring.dependency-management' version '1.1.7'
+    id 'com.google.protobuf' version '0.9.4'
 }
 
 group = 'com.hanyahunya'
@@ -9,41 +10,97 @@ version = '0.0.1-SNAPSHOT'
 description = 'Function Invoke Service'
 
 java {
-	toolchain {
-		languageVersion = JavaLanguageVersion.of(21)
-	}
+    toolchain {
+        languageVersion = JavaLanguageVersion.of(21)
+    }
 }
 
 configurations {
-	compileOnly {
-		extendsFrom annotationProcessor
-	}
+    compileOnly {
+        extendsFrom annotationProcessor
+    }
 }
 
 repositories {
-	mavenCentral()
+    mavenCentral()
+}
+
+ext {
+    set('springCloudVersion', "2025.0.0")
+    set('nettyVersion', '4.2.8.Final')
+
+    // 보안 패치 버전
+    set('protobufVersion', '4.28.2')
+    set('xstreamVersion', '1.4.21')
+    set('grpcNettyShadedVersion', '1.75.0')
 }
 
 dependencies {
-	implementation ('org.springframework.boot:spring-boot-starter-data-redis') {
-		exclude group: 'io.lettuce', module: 'lettuce-core'
-	}
-	implementation 'redis.clients:jedis'
+    implementation 'org.springframework.boot:spring-boot-starter-web'
+    testImplementation 'org.springframework.boot:spring-boot-starter-test'
+    testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
 
-	implementation platform('io.awspring.cloud:spring-cloud-aws-dependencies:3.4.0')
-	implementation 'io.awspring.cloud:spring-cloud-aws-starter-s3'
+    // lombok
+    compileOnly 'org.projectlombok:lombok'
+    annotationProcessor 'org.projectlombok:lombok'
 
-	implementation 'org.springframework.boot:spring-boot-starter-validation'
+    // db
+    implementation 'org.springframework.boot:spring-boot-starter-data-mongodb'
+    implementation ('org.springframework.boot:spring-boot-starter-data-redis') {
+        exclude group: 'io.lettuce', module: 'lettuce-core'
+    }
+    implementation 'redis.clients:jedis'
 
-	implementation 'org.springframework.boot:spring-boot-starter-data-mongodb'
-	implementation 'org.springframework.boot:spring-boot-starter-web'
-	compileOnly 'org.projectlombok:lombok'
-	annotationProcessor 'org.projectlombok:lombok'
-	testImplementation 'org.springframework.boot:spring-boot-starter-test'
-	testRuntimeOnly 'org.junit.platform:junit-platform-launcher'
-	testImplementation 'org.springframework.boot:spring-boot-starter-data-redis-test'
+    // security
+    implementation 'org.springframework.boot:spring-boot-starter-security'
+    testImplementation 'org.springframework.security:spring-security-test'
+
+    // eureka & lb
+    implementation 'org.springframework.cloud:spring-cloud-starter-netflix-eureka-client'
+    implementation 'org.springframework.cloud:spring-cloud-starter-loadbalancer'
+
+    // javaparser
+    implementation 'com.github.javaparser:javaparser-symbol-solver-core:3.27.1'
+
+    // --- 보안 패치 적용 ---
+    implementation "io.grpc:grpc-netty-shaded:${grpcNettyShadedVersion}"
+    implementation "com.google.protobuf:protobuf-java:${protobufVersion}"
+    implementation "com.thoughtworks.xstream:xstream:${xstreamVersion}"
+    // gRPC
+    implementation 'net.devh:grpc-spring-boot-starter:3.1.0.RELEASE'
+
+    // aws
+    implementation platform('io.awspring.cloud:spring-cloud-aws-dependencies:3.4.0')
+    implementation 'io.awspring.cloud:spring-cloud-aws-starter-s3'
+
+    // validation
+    implementation 'org.springframework.boot:spring-boot-starter-validation'
+}
+
+dependencyManagement {
+    imports {
+        mavenBom "org.springframework.cloud:spring-cloud-dependencies:${springCloudVersion}"
+    }
+}
+
+protobuf {
+    protoc {
+        artifact = "com.google.protobuf:protoc:${protobufVersion}"
+    }
+    plugins {
+        grpc {
+            artifact = 'io.grpc:protoc-gen-grpc-java:1.69.0'
+        }
+    }
+    generateProtoTasks {
+        all()*.plugins {
+            grpc {
+                option '@generated=omit'
+            }
+        }
+    }
 }
 
 tasks.named('test') {
-	useJUnitPlatform()
+    useJUnitPlatform()
 }
