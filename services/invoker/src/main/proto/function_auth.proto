@@ -16,4 +16,5 @@ message VerifyAccessRequest {
 
 message VerifyAccessResponse {
   bool is_valid = 1;
+  string s3_key = 2;
 }

@@ -1,5 +1,6 @@
 package com.hanyahunya.invoker.adapter.out.redis;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hanyahunya.invoker.application.port.out.ContainerPoolPort;
 import com.hanyahunya.invoker.domain.model.ContainerInfo;
@@ -34,15 +35,27 @@ public class ContainerRedisAdapter implements ContainerPoolPort {
         return convertResultToContainerInfo(result);
     }
 
-    @Override
-    public void requestContainerCreation(UUID functionId) {
-        int slot = getSlotIndex(functionId);
+    private record ColdStartRequest(String functionId, String s3Key) {}
 
+    @Override
+    public void requestContainerCreation(UUID functionId, String s3Key) {
+        int slot = getSlotIndex(functionId);
         String targetQueue = REQUEST_QUEUE_PREFIX + slot;
 
-        stringRedisTemplate.opsForList().rightPush(targetQueue, functionId.toString());
+        try {
+            // JSON 문자열로 변환
+            ColdStartRequest request = new ColdStartRequest(functionId.toString(), s3Key);
+            String messageJson = objectMapper.writeValueAsString(request);
 
-        log.info("Requested creation for Function [{}] -> Slot [{}]", functionId, slot);
+            // RPUSH
+            stringRedisTemplate.opsForList().rightPush(targetQueue, messageJson);
+
+            log.info("Requested creation: Queue[{}] -> {}", targetQueue, messageJson);
+
+        } catch (JsonProcessingException e) {
+            log.error("Failed to serialize ColdStartRequest", e);
+            throw new RuntimeException("Redis Message Serialization Failed");
+        }
     }
 
     @Override

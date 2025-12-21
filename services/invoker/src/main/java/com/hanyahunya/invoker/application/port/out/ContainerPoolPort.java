@@ -8,7 +8,7 @@ import java.util.UUID;
 public interface ContainerPoolPort {
     Optional<ContainerInfo> popContainer(UUID functionId);
 
-    void requestContainerCreation(UUID functionId);
+    void requestContainerCreation(UUID functionId, String s3Key);
 
     Optional<ContainerInfo> waitContainer(UUID functionId);
 
