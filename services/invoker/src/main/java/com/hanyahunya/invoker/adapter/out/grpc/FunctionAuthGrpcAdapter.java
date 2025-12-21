@@ -16,7 +16,7 @@ public class FunctionAuthGrpcAdapter implements FunctionAuthPort {
     private FunctionAuthServiceGrpc.FunctionAuthServiceBlockingStub blockingStub;
 
     @Override
-    public boolean authenticateFunction(UUID functionId, String accessKey) {
+    public Result authenticateFunction(UUID functionId, String accessKey) {
         VerifyAccessRequest request = VerifyAccessRequest.newBuilder()
                 .setFunctionId(functionId.toString())
                 .setAccessKey(accessKey)
@@ -27,6 +27,9 @@ public class FunctionAuthGrpcAdapter implements FunctionAuthPort {
         } catch (Exception e) {
             throw new RuntimeException("Failed to verify access: " + e.getMessage());
         }
-        return response.getIsValid();
+        return new Result(
+                response.getIsValid(),
+                response.getS3Key()
+                );
     }
 }
