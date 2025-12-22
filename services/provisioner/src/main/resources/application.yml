@@ -1,0 +1,41 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: provisioner
+  profiles:
+    active: ${SPRING_PROFILES_ACTIVE:dev}
+  threads:
+    virtual:
+      enabled: true
+
+eureka:
+  instance:
+    prefer-ip-address: true
+    instance-id: ${spring.application.name}:${random.value}:${server.port}
+  client:
+    register-with-eureka: true
+    fetch-registry: false
+
+---
+spring:
+  config:
+    activate:
+      on-profile: prod
+  data:
+    redis:
+      host: ${PRO_REDIS_HOST}
+      port: ${PRO_REDIS_PORT}
+      password: ${PRO_REDIS_PASSWORD}
+  cloud:
+    aws:
+      region:
+        static: ${PRO_AWS_REGION}
+      s3:
+        bucket: ${PRO_AWS_BUCKET}
+
+eureka:
+  client:
+    service-url:
+      defaultZone: "http://${PRO_EUR_USERNAME}:${PRO_EUR_PASSWORD}@${PRO_EUR_HOST}:${PRO_EUR_PORT}/eureka/"

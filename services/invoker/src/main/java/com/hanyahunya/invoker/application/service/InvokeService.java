@@ -29,13 +29,13 @@ public class InvokeService implements InvokeUseCase {
         UUID functionId = command.functionId();
         log.info("Invoke requested by Function: [{}]", functionId);
 
-        // 권한 검증
-        boolean isAuthenticated = functionAuthPort.authenticateFunction(
+        // 권한 검증 및 S3 Key 획득
+        FunctionAuthPort.Result authResult = functionAuthPort.authenticateFunction(
                 functionId,
                 command.accessKey()
         );
 
-        if (!isAuthenticated) {
+        if (!authResult.isValid()) {
             log.warn("Access denied Function: [{}]", functionId);
             throw new PermissionDeniedException(FunctionErrorCode.INVOKE_PERMISSION_DENIED);
         }
@@ -48,8 +48,12 @@ public class InvokeService implements InvokeUseCase {
             containerInfo = optionalContainerInfo.get();
             log.info("Warm container found: {}", containerInfo);
         } else {
-            log.info("No idle container. Initiating Cold Start for [{}]", functionId);
-            containerPoolPort.requestContainerCreation(functionId);
+            // Cold Start
+            String s3Key = authResult.s3Key();
+            log.info("No idle container. Initiating Cold Start for [{}] (S3: {})", functionId, s3Key);
+
+            // s3Key 전달
+            containerPoolPort.requestContainerCreation(functionId, s3Key);
 
             containerInfo = containerPoolPort.waitContainer(functionId)
                     .orElseThrow(() -> {
@@ -59,24 +63,20 @@ public class InvokeService implements InvokeUseCase {
             log.info("Cold start completed. Container acquired: {}", containerInfo);
         }
 
-        // Agent 실행요청
+        // Agent 실행 요청
         AgentInvokePort.AgentResponse response = agentInvokePort.executeFunction(
                 containerInfo.agentIp(),
                 containerInfo.sockPath(),
                 command.params()
         );
 
-        // 실행결과 처리 및 컨테이너 반환
+        // 결과 처리
         if (response.success()) {
             log.info("Execution Success. Mem: {} bytes", response.memoryUsage());
-
-            // 성공 시 RPUSH
             containerPoolPort.returnContainer(functionId, containerInfo);
-
             return new Result(response.result());
         } else {
             log.error("Execution Failed: {}", response.errorMessage());
-            // 실패 시 정책에 따라 컨테이너를 버리거나 재검사 로직 필요 (여기서는 반환 안함)
             throw new RuntimeException("Function execution failed: " + response.errorMessage());
         }
     }
