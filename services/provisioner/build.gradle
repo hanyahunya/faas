@@ -26,6 +26,9 @@ repositories {
 
 ext {
 	set('springCloudVersion', "2025.0.0")
+
+	// 보안 패치 버전
+	set('commonsLangVersion', "3.18.0")
 }
 
 dependencies {
@@ -50,6 +53,13 @@ dependencies {
 	// aws
 	implementation platform('io.awspring.cloud:spring-cloud-aws-dependencies:3.4.0')
 	implementation 'io.awspring.cloud:spring-cloud-aws-starter-s3'
+
+	// --- 보안 패치 적용 ---
+	implementation "org.apache.commons:commons-lang3:${commonsLangVersion}"
+	// docker
+	implementation 'com.github.docker-java:docker-java-core:3.7.0'
+	// 통신용 Transport (Apache HttpClient 5 사용)
+	implementation 'com.github.docker-java:docker-java-transport-httpclient5:3.7.0'
 }
 
 dependencyManagement {
