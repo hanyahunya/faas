@@ -11,6 +11,10 @@ spring:
   threads:
     virtual:
       enabled: true
+  data:
+    mongodb:
+      uuid-representation: standard
+      auto-index-creation: true
 
 grpc:
   server:
@@ -31,7 +35,6 @@ eureka:
     fetch-registry: true
 
 ---
-# todo mongoDB conn
 spring:
   config:
     activate:
@@ -41,6 +44,13 @@ spring:
       host: ${INV_REDIS_HOST}
       port: ${INV_REDIS_PORT}
       password: ${INV_REDIS_PASSWORD}
+    mongodb:
+      host: ${INV_MONGO_HOST}
+      port: ${INV_MONGO_PORT}
+      database: ${INV_MONGO_DB}
+      username: ${INV_MONGO_USERNAME}
+      password: ${INV_MONGO_PASSWORD}
+      authentication-database: ${INV_MONGO_AUTH_DB}
   cloud:
     aws:
       region:
