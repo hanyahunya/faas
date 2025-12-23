@@ -14,6 +14,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.Map;
+import java.util.UUID;
 
 @Slf4j
 @Component
@@ -24,18 +25,17 @@ public class AgentGrpcAdapter implements AgentInvokePort {
     private final AgentChannelManager channelManager;
 
     @Override
-    public AgentResponse executeFunction(String agentIp, String sockPath, Map<String, Object> params) {
-        // 매니저에 채널요청
+    public AgentResponse executeFunction(String agentIp, String sockPath, Map<String, Object> params, UUID requestId) {
         ManagedChannel channel = channelManager.getChannel(agentIp);
 
         try {
             AgentServiceGrpc.AgentServiceBlockingStub stub = AgentServiceGrpc.newBlockingStub(channel);
-
             String payloadJson = objectMapper.writeValueAsString(params);
 
             ExecuteRequest request = ExecuteRequest.newBuilder()
                     .setSockPath(sockPath)
                     .setInputPayload(payloadJson)
+                    .setRequestId(requestId.toString())
                     .build();
 
             ExecuteResponse response = stub.execute(request);
@@ -44,13 +44,15 @@ public class AgentGrpcAdapter implements AgentInvokePort {
                     response.getResult(),
                     response.getSuccess(),
                     response.getMemoryUsage(),
-                    response.getErrorMessage()
+                    response.getErrorMessage(),
+                    response.getDurationMs(),
+                    response.getLogS3Key()
             );
 
         } catch (StatusRuntimeException e) {
-            // todo [장애 처리] gRPC 통신 에러 (연결 끊김, 타임아웃 등)
-            log.error("gRPC Communication Error with Agent [{}]: {}", agentIp, e.getStatus());
-            return new AgentResponse(null, false, 0, "Agent Network Error: " + e.getMessage());
+            log.error("gRPC Error [ReqId: {}, Agent: {}]: {}", requestId, agentIp, e.getStatus());
+            // 에러 발생 시 duration 0, logKey null 등으로 처리
+            return new AgentResponse(null, false, 0, "Agent Network Error: " + e.getMessage(), 0, null);
 
         } catch (JsonProcessingException e) {
             throw new RuntimeException("Parameter serialization failed", e);

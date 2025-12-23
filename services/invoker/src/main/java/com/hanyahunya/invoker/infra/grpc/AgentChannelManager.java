@@ -25,9 +25,10 @@ public class AgentChannelManager {
 
     private ManagedChannel createChannel(String ip) {
         log.info("Creating new gRPC Channel for Agent: {}", ip);
-        return ManagedChannelBuilder.forAddress(ip, AGENT_PORT)
+
+        // dns:/// 붙여서 서비스 디스커버리를 우회하고 강제로 IP/DNS 연결을 시도 <- eureka 떄문
+        return ManagedChannelBuilder.forTarget("dns:///" + ip + ":" + AGENT_PORT)
                 .usePlaintext()
-                // KeepAlive
                 .keepAliveTime(30, TimeUnit.SECONDS)
                 .keepAliveTimeout(10, TimeUnit.SECONDS)
                 .build();
