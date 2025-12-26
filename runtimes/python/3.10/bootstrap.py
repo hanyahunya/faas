@@ -2,7 +2,6 @@ import os
 import sys
 import json
 import importlib.util
-import tracemalloc
 from http.server import BaseHTTPRequestHandler
 from socketserver import UnixStreamServer
 
@@ -10,6 +9,17 @@ SOCK_PATH = os.environ.get('SOCK_PATH', '/var/run/function.sock')
 USER_CODE_PATH = '/var/task/index.py'
 
 user_handler = None
+
+# [최적화] OS 메모리(RSS) 측정 함수 (오버헤드 거의 없음)
+def get_memory_usage():
+    try:
+        with open('/proc/self/statm', 'r') as f:
+            # 두 번째 값이 RSS(Resident Set Size) 페이지 수
+            rss_pages = int(f.read().split()[1])
+            # 페이지 크기(보통 4KB)를 곱해서 Byte 단위 변환
+            return rss_pages * os.sysconf('SC_PAGE_SIZE')
+    except:
+        return 0
 
 def load_user_code():
     global user_handler
@@ -41,9 +51,9 @@ class FunctionHandler(BaseHTTPRequestHandler):
             "error_message": None
         }
         
-        tracemalloc.start()
+        # [최적화] 시작 메모리 측정 (RSS)
+        start_mem = get_memory_usage()
         
-        # [수정] 변수 초기화
         request_id = 'unknown'
 
         try:
@@ -57,7 +67,7 @@ class FunctionHandler(BaseHTTPRequestHandler):
             
             request_id = meta.get("request_id", "unknown")
             
-            # [추가] 시작 로그 마커 (파이썬은 flush=True 필수)
+            # [필수] 로그 수집을 위한 시작 마커
             print(f"===LOG_START:{request_id}===", flush=True)
             
             # 사용자 함수 실행
@@ -71,16 +81,17 @@ class FunctionHandler(BaseHTTPRequestHandler):
             response_proto["success"] = True
             
         except Exception as e:
+            # 에러는 중요하므로 출력
             print(f"Execution Error: {e}", file=sys.stderr, flush=True)
             response_proto["success"] = False
             response_proto["error_message"] = str(e)
             
         finally:
-            _, peak = tracemalloc.get_traced_memory()
-            tracemalloc.stop()
-            response_proto["memory_usage"] = peak
+            # [최적화] 종료 메모리 측정 및 차이 계산
+            end_mem = get_memory_usage()
+            response_proto["memory_usage"] = max(0, end_mem - start_mem)
             
-            # [추가] 종료 로그 마커
+            # [필수] 로그 수집을 위한 종료 마커
             print(f"===LOG_END:{request_id}===", flush=True)
             
             self.send_response(200)
