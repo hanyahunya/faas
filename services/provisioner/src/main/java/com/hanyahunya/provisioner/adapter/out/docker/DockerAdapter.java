@@ -10,13 +10,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
-import java.io.File;
-import java.io.IOException;
-import java.nio.file.*;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.TimeUnit;
 
 @Slf4j
 @Component
@@ -33,44 +30,10 @@ public class DockerAdapter implements ContainerOrchestrationPort {
         String imageTag = mapRuntimeToImage(runtime);
         String containerName = "ins-" + instanceId;
 
-        log.info("Docker: Provisioning Start [Image: {}, Name: {}]", imageTag, containerName);
+        log.info("Docker: Creating Container [Image: {}, Name: {}]", imageTag, containerName);
 
         removeContainerIfExists(containerName);
 
-        // 컨테이너 생성 및 시작
-        String containerId = createAndStartDockerContainer(imageTag, containerName, env, hostCodePath, hostSockPath);
-
-        // 소켓 파일 생성 대기 (Health Check)
-        // 호스트 경로의 sock 폴더를 감시
-        File sockFile = Paths.get(hostSockPath, "function.sock").toFile();
-        boolean isReady = waitForSocketFile(sockFile);
-
-        if (!isReady) {
-            log.error("Container failed to initialize socket. Removing container.");
-            removeContainerIfExists(containerName);
-            throw new RuntimeException("Container initialization failed: socket file not created.");
-        }
-
-        // 즉시 얼리기 (Pause)
-        pauseContainer(instanceId);
-
-        log.info("Docker: Provisioning Completed (Paused) [{}]", containerId);
-        return containerId;
-    }
-
-    // 컨테이너 일시정지
-    private void pauseContainer(String instanceId) {
-        String containerName = "ins-" + instanceId;
-        try {
-            dockerClient.pauseContainerCmd(containerName).exec();
-            log.debug("Container Paused: {}", containerName);
-        } catch (Exception e) {
-            log.warn("Failed to pause container [{}]: {}", containerName, e.getMessage());
-        }
-    }
-
-    // 내부 메서드: 순수 Docker 생성/시작 로직
-    private String createAndStartDockerContainer(String imageTag, String containerName, Map<String, String> env, String hostCodePath, String hostSockPath) {
         List<String> envList = new ArrayList<>();
         if (env != null) {
             env.forEach((k, v) -> envList.add(k + "=" + v));
@@ -82,7 +45,8 @@ public class DockerAdapter implements ContainerOrchestrationPort {
                         Bind.parse(hostCodePath + ":" + CONTAINER_CODE_PATH + ":ro"),
                         Bind.parse(hostSockPath + ":" + CONTAINER_SOCK_DIR + ":rw")
                 )
-                .withMemory(256 * 1024 * 1024L)
+                // [수정] 메모리 제한: 256MB -> 100MB (안전한 최소치)
+                .withMemory(100 * 1024 * 1024L)
                 .withCpuPeriod(100000L)
                 .withCpuQuota(50000L);
 
@@ -95,60 +59,44 @@ public class DockerAdapter implements ContainerOrchestrationPort {
 
             String containerId = container.getId();
             dockerClient.startContainerCmd(containerId).exec();
+
             return containerId;
 
         } catch (Exception e) {
-            throw new RuntimeException("Failed to start docker container", e);
+            throw new RuntimeException("Failed to start container", e);
         }
     }
 
-    private boolean waitForSocketFile(File file) {
-        Path dir = file.getParentFile().toPath();
-        Path targetFileName = file.toPath().getFileName();
+    @Override
+    public void removeContainer(String instanceId) {
+        String containerName = "ins-" + instanceId;
+        removeContainerIfExists(containerName);
+        log.info("Docker Container Removed: {}", containerName);
+    }
 
-        try (WatchService watchService = FileSystems.getDefault().newWatchService()) {
-            // 디렉토리의 파일생성 이벤트 등록
-            dir.register(watchService, StandardWatchEventKinds.ENTRY_CREATE);
-
-            if (file.exists()) {
-                return true;
-            }
-
-            // 최대 대기 시단
-            long remainingNanos = TimeUnit.SECONDS.toNanos(5);
-            long endNanos = System.nanoTime() + remainingNanos;
-
-            while (remainingNanos > 0) {
-                // 이벤트가 올때까지 블로킹 (가상 스레드)
-                WatchKey key = watchService.poll(remainingNanos, TimeUnit.NANOSECONDS);
-
-                if (key == null) return false; // 타임아웃
-
-                for (WatchEvent<?> event : key.pollEvents()) {
-                    if (event.context().equals(targetFileName)) {
-                        return true;
-                    }
-                }
-
-                // 이벤트 키 초기화
-                boolean valid = key.reset();
-                if (!valid) break;
-
-                // 남은 시간 계산해서 다시 루프
-                remainingNanos = endNanos - System.nanoTime();
-            }
-        } catch (IOException | InterruptedException e) {
-            log.warn("File Watch Error [{}]: {}", file.getName(), e.getMessage());
-            if (e instanceof InterruptedException) Thread.currentThread().interrupt();
+    // [추가] 현재 떠있는 함수 컨테이너(ins-*) 개수 카운팅
+    @Override
+    public int getFunctionContainerCount() {
+        try {
+            // "ins-"로 시작하는 컨테이너만 필터링하여 개수 반환
+            // status=running 조건도 추가 가능하나, 일단 존재하는 모든 함수 컨테이너를 리소스로 간주
+            return dockerClient.listContainersCmd()
+                    .withShowAll(true)
+                    .withNameFilter(Collections.singleton("ins-"))
+                    .exec()
+                    .size();
+        } catch (Exception e) {
+            log.warn("Failed to count containers", e);
+            return 0;
         }
-
-        return file.exists();
     }
 
     private void removeContainerIfExists(String containerName) {
         try {
             dockerClient.removeContainerCmd(containerName).withForce(true).exec();
-        } catch (Exception e) { /* 무시 */ }
+        } catch (Exception e) {
+            // 이미 없으면 무시
+        }
     }
 
     private String mapRuntimeToImage(Runtime runtime) {

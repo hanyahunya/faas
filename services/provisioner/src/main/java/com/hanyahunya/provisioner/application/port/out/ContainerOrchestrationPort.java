@@ -12,4 +12,8 @@ public interface ContainerOrchestrationPort {
             String hostCodePath,
             String hostSockPath
     );
+
+    void removeContainer(String instanceId);
+
+    int getFunctionContainerCount();
 }
