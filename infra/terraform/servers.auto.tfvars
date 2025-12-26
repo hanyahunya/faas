@@ -1,20 +1,26 @@
-# servers.auto.tfvars
-
 server_configs = {
-  # Server A: 풀스택 (Gateway, Apps, DBs)
-  "Server-A" = {
-    instance_type = "m7i-flex.large"
-    roles         = ["gateway", "register", "invoker", "nosql", "redis"]
+  "core-01" = {
+    instance_type = "c7i.xlarge"
+    roles         = ["gateway", "invoker"]
+  }
+  "core-02" = {
+    instance_type = "c7i.xlarge"
+    roles         = ["gateway", "invoker"]
   }
 
-  "Server-B" = {
-    instance_type = "m7i-flex.large"
-    roles         = ["provisioner_agent"]
+  "data-01" = {
+    instance_type = "m8i.xlarge"
+    roles         = ["nosql", "redis"]
   }
 
-  # Server D: 디스커버리 전용
-  "Server-D" = {
+
+  "discovery-01" = {
     instance_type = "t3.small"
     roles         = ["discovery"]
   }
+
+  "worker-01" = {instance_type = "m8i.4xlarge", roles = ["provisioner_agent"]}
+  "worker-02" = {instance_type = "m8i.4xlarge", roles = ["provisioner_agent"]}
+  "worker-03" = {instance_type = "m8i.4xlarge", roles = ["provisioner_agent"]}
+  "worker-04" = {instance_type = "m8i.4xlarge", roles = ["provisioner_agent"]}
 }
