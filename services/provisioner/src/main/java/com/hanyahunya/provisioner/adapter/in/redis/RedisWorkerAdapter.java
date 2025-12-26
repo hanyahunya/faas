@@ -2,6 +2,7 @@ package com.hanyahunya.provisioner.adapter.in.redis;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.hanyahunya.provisioner.application.port.in.ContainerUseCase;
+import com.hanyahunya.provisioner.application.port.out.ContainerOrchestrationPort;
 import com.hanyahunya.provisioner.application.port.out.WorkerManagementPort;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -27,15 +28,20 @@ public class RedisWorkerAdapter implements WorkerManagementPort {
     private final ObjectMapper objectMapper;
     private final ContainerUseCase containerUseCase;
 
-    // 가상 스레드 실행기 (redis리스너와 실제 비즈니스 로직 모두 여기서 생성되지만 서로 독립적임)
-    private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
+    // [추가] 컨테이너 개수 확인용 포트 주입
+    private final ContainerOrchestrationPort containerOrchestrationPort;
 
-    // 리스너 스레드의 핸들만 관리 (실제 작업 중인 워커스레드는 여기포함 안됨)
+    private final ExecutorService executor = Executors.newVirtualThreadPerTaskExecutor();
     private final List<Future<?>> activeListenerFutures = new ArrayList<>();
 
     private volatile boolean isRunning = false;
     private Integer currentStart = null;
     private Integer currentEnd = null;
+
+    // 전체 파티션 수 (순환용)
+    private static final int TOTAL_PARTITIONS = 16384;
+    // 과부하 기준 컨테이너 수
+    private static final int MAX_CONTAINER_LIMIT = 50;
 
     @Override
     public synchronized void syncWorkers(int start, int end) {
@@ -44,7 +50,7 @@ public class RedisWorkerAdapter implements WorkerManagementPort {
         }
 
         log.info("Worker Assignment Updating: {} ~ {}", start, end);
-        stopAllWorkers(); // 기존 리스너만 종료 (실행 중인 컨테이너 생성 작업은 계속 돔)
+        stopAllWorkers();
 
         isRunning = true;
         currentStart = start;
@@ -57,7 +63,6 @@ public class RedisWorkerAdapter implements WorkerManagementPort {
             int toIndex = Math.min(i + batchSize, allPartitions.size());
             List<Integer> batch = allPartitions.subList(i, toIndex);
 
-            // 리스너 실행 (이 Future만 리스트에 저장)
             Runnable listenerTask = createGroupListenerTask(batch);
             Future<?> future = executor.submit(listenerTask);
             activeListenerFutures.add(future);
@@ -73,12 +78,10 @@ public class RedisWorkerAdapter implements WorkerManagementPort {
         log.info("Stopping all listeners for rebalance...");
         isRunning = false;
 
-        // 리스너 스레드에게만 "그만 가져오고 퇴근해"라고 인터럽트 걺 <- Provisioner 아웃스케일로 인한 파티션 재분재
         for (Future<?> future : activeListenerFutures) {
             future.cancel(true);
         }
 
-        // 리스트 비움 (실제 작업중인 스레드는 executor 어딘가에서 잘돌고 있음)
         activeListenerFutures.clear();
         currentStart = null;
         currentEnd = null;
@@ -92,27 +95,23 @@ public class RedisWorkerAdapter implements WorkerManagementPort {
 
             while (isRunning) {
                 try {
-                    // 데이터 가져오기 (Blocking)
                     List<String> result = redisTemplate.execute((RedisCallback<List<String>>) connection -> {
                         StringRedisConnection stringConn = (StringRedisConnection) connection;
                         return stringConn.bLPop(0, keysArray);
                     });
 
-                    // 데이터가 있을경우
                     if (result != null && !result.isEmpty()) {
                         String queueName = result.get(0);
                         String messageJson = result.get(1);
 
-                        // 처리담당 스레드에 토스하고 나는 즉시빠져나옴
-                        // 이 Future는 activeListenerFutures에 저장하지 않으므로, stopAllWorkers()의 영향을 안받음.
+                        // 비동기 처리
                         executor.submit(() -> processMessageAsync(queueName, messageJson));
                     }
 
                 } catch (Exception e) {
-                    // 인터럽트 발생 시 or Redis 에러 시
+                    // ignore
                 }
 
-                // 종료신호 왔으면 즉시 루프탈출
                 if (Thread.currentThread().isInterrupted()) {
                     break;
                 }
@@ -121,9 +120,36 @@ public class RedisWorkerAdapter implements WorkerManagementPort {
         };
     }
 
-    // 이 메서드는 리스너와는 완전히 별개인 익명 가상스레드에서 실행됨
     private void processMessageAsync(String queueName, String messageJson) {
         try {
+            // =========================================================
+            // [핵심] 과부하 제어 및 파티션 넘기기 (Load Shedding)
+            // =========================================================
+
+            // 1. 내가 전체 파티션을 담당하는지 확인 (Solo Mode)
+            boolean isSoloMode = (currentStart != null && currentEnd != null)
+                    && (currentStart == 0 && currentEnd == (TOTAL_PARTITIONS - 1));
+
+            // 2. 솔로 모드가 아닐 때만 과부하 체크
+            if (!isSoloMode) {
+                int currentCount = containerOrchestrationPort.getFunctionContainerCount();
+
+                // 3. 임계치(50개)를 넘으면 다음 파티션으로 토스
+                if (currentCount >= MAX_CONTAINER_LIMIT) {
+                    int nextPartition = (currentEnd + 1) % TOTAL_PARTITIONS;
+                    String targetQueue = "func:request:queue:" + nextPartition;
+
+                    log.warn("Overload! (Count: {} >= {}). Offloading to Queue: {}",
+                            currentCount, MAX_CONTAINER_LIMIT, targetQueue);
+
+                    // 다시 Redis 큐에 넣음 (폭탄 돌리기)
+                    redisTemplate.opsForList().rightPush(targetQueue, messageJson);
+                    return; // 처리 중단하고 종료
+                }
+            }
+
+            // =========================================================
+
             log.info("Processing Task asynchronously: {}", messageJson);
 
             ColdStartRequestDto dto = objectMapper.readValue(messageJson, ColdStartRequestDto.class);
@@ -132,7 +158,7 @@ public class RedisWorkerAdapter implements WorkerManagementPort {
                     dto.s3Key()
             );
 
-            containerUseCase.createAndRunContainer(command); // 무거운 작업
+            containerUseCase.createAndRunContainer(command);
 
         } catch (Exception e) {
             log.error("Failed to process message: {}", messageJson, e);

@@ -64,7 +64,7 @@ resource "aws_instance" "load_tester" {
   ami           = data.aws_ami.ubuntu_24_04.id 
   
   # 부하 테스트용 인스턴스
-  instance_type = "c7i-flex.large" 
+  instance_type = "c7i.xlarge" 
   
   key_name      = var.key_name
   

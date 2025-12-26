@@ -37,22 +37,20 @@ const server = http.createServer(async (req, res) => {
             error_message: null
         };
         
-        const startMem = process.memoryUsage().heapUsed;
+        // [최적화] 시작 시점 RSS(물리 메모리) 측정
+        const startMem = process.memoryUsage().rss;
         
-        // [수정] Envelope 파싱 및 변수 선언
         let requestId = 'unknown';
         let userParams = {};
 
         try {
-            // Body가 Envelope 형태(system_metadata, user_params)라고 가정
             const envelope = body ? JSON.parse(body) : {};
-            
             const meta = envelope.system_metadata || {};
-            userParams = envelope.user_params || {}; // 사용자 함수에는 이 params만 전달
+            userParams = envelope.user_params || {};
             
             requestId = meta.request_id || 'unknown';
 
-            // [추가] 시작 로그 마커
+            // [필수] 로그 시작 마커
             console.log(`===LOG_START:${requestId}===`);
 
             // 사용자 함수 실행
@@ -66,10 +64,11 @@ const server = http.createServer(async (req, res) => {
             responseProto.success = false;
             responseProto.error_message = e.message || String(e);
         } finally {
-            const endMem = process.memoryUsage().heapUsed;
+            // [최적화] 종료 시점 RSS 측정 및 차이 계산
+            const endMem = process.memoryUsage().rss;
             responseProto.memory_usage = Math.max(0, endMem - startMem);
 
-            // [추가] 종료 로그 마커
+            // [필수] 로그 종료 마커
             console.log(`===LOG_END:${requestId}===`);
 
             res.writeHead(200, { 'Content-Type': 'application/json' });

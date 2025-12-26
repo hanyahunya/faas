@@ -11,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.List;
 import java.util.Map;
 
@@ -27,9 +28,6 @@ public class DockerAdapter implements ContainerOrchestrationPort {
     @Override
     public String createAndStartContainer(Runtime runtime, String instanceId, Map<String, String> env, String hostCodePath, String hostSockPath) {
         String imageTag = mapRuntimeToImage(runtime);
-
-        // 함수 ID가 아니라, 이번 컨테이너의 고유 ID(UUID)를 이름으로 사용
-        // ins-550e8400-e29b-41d4-a716-446655440000
         String containerName = "ins-" + instanceId;
 
         log.info("Docker: Creating Container [Image: {}, Name: {}]", imageTag, containerName);
@@ -44,12 +42,11 @@ public class DockerAdapter implements ContainerOrchestrationPort {
 
         HostConfig hostConfig = HostConfig.newHostConfig()
                 .withBinds(
-                        // Code 공유 폴더 (Read-Only)
                         Bind.parse(hostCodePath + ":" + CONTAINER_CODE_PATH + ":ro"),
-                        // Sock 격리 폴더 (Read-Write)
                         Bind.parse(hostSockPath + ":" + CONTAINER_SOCK_DIR + ":rw")
                 )
-                .withMemory(256 * 1024 * 1024L)
+                // [수정] 메모리 제한: 256MB -> 100MB (안전한 최소치)
+                .withMemory(100 * 1024 * 1024L)
                 .withCpuPeriod(100000L)
                 .withCpuQuota(50000L);
 
@@ -70,11 +67,35 @@ public class DockerAdapter implements ContainerOrchestrationPort {
         }
     }
 
+    @Override
+    public void removeContainer(String instanceId) {
+        String containerName = "ins-" + instanceId;
+        removeContainerIfExists(containerName);
+        log.info("Docker Container Removed: {}", containerName);
+    }
+
+    // [추가] 현재 떠있는 함수 컨테이너(ins-*) 개수 카운팅
+    @Override
+    public int getFunctionContainerCount() {
+        try {
+            // "ins-"로 시작하는 컨테이너만 필터링하여 개수 반환
+            // status=running 조건도 추가 가능하나, 일단 존재하는 모든 함수 컨테이너를 리소스로 간주
+            return dockerClient.listContainersCmd()
+                    .withShowAll(true)
+                    .withNameFilter(Collections.singleton("ins-"))
+                    .exec()
+                    .size();
+        } catch (Exception e) {
+            log.warn("Failed to count containers", e);
+            return 0;
+        }
+    }
+
     private void removeContainerIfExists(String containerName) {
         try {
             dockerClient.removeContainerCmd(containerName).withForce(true).exec();
         } catch (Exception e) {
-            // 무시
+            // 이미 없으면 무시
         }
     }
 
