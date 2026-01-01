@@ -10,7 +10,8 @@
 <img width="2250" height="864" alt="화면 캡처 2025-12-28 175058" src="https://github.com/user-attachments/assets/ee0d0b2c-6aa4-47a6-9a6d-e29154e48918" />
 
 
-* **Throughput**: 7,000+ RPS (Requests Per Second) を安定的に処理
+* **Max Throughput**: 19,000+ RPS
+* **Scenario**: 0 to 2,000+ VUs Ramp-up Test
 * **Latency (P95)**: 31.16ms
 * **Success Rate**: 99.99% (236万リクエスト中、失敗はわずか169件)
 * **特徴**: コールドスタート状況下でも「コンテナ再利用の競争」メカニズムにより、待機時間を劇的に短縮。
