@@ -7,14 +7,14 @@
 * **開発期間**: 2025.12.17 ~ 2025.12.27
 
 ## 📚 Table of Contents
-- [🚀 Key Performance](#-key-performance-k6-load-test)
-- [🏗 System Architecture](#-system-architecture)
-  - [Core Components](#1-core-components)
-  - [Core Logic: Competitive Consumption](#2-コアロジック-コールドスタートの最小化-competitive-consumption)
-  - [Request Lifecycle (Detail Flow)](#3-リクエスト処理フロー-request-lifecycle)
-- [🛠 Tech Stack](#-tech-stack)
-- [🔧 Troubleshooting & Optimization](#-troubleshooting--optimization-dev-log)
-- [🔮 Future Works](#-future-works)
+- [🚀 主要パフォーマンス (Key Performance)](#-key-performance-k6-load-test)
+- [🏗 システムアーキテクチャ (System Architecture)](#-system-architecture)
+  - [コアコンポーネント (Core Components)](#1-core-components)
+  - [コアロジック: 競争的消費 (Core Logic: Competitive Consumption)](#2-コアロジック-コールドスタートの最小化-competitive-consumption)
+  - [リクエスト処理フロー (Request Lifecycle)](#3-リクエスト処理フロー-request-lifecycle)
+- [🛠 技術スタック (Tech Stack)](#-tech-stack)
+- [🔧 トラブルシューティングと最適化 (Troubleshooting & Optimization)](#-troubleshooting--optimization-dev-log)
+- [🔮 今後の展望 (Future Works)](#-future-works)
 
 ---
 
