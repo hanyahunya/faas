@@ -62,7 +62,7 @@
 
 以下の3つのシナリオにおける、アーキテクチャ図 `(1)` ~ `(11)` の詳細フローです。
 
-<img width="1161" height="887" alt="final_arch" src="https://github.com/user-attachments/assets/68aa1d31-5f07-43ec-bb9b-a1dd3f87efa8" />
+<img width="1161" height="887" alt="arch" src="https://github.com/user-attachments/assets/7a9b4b01-8374-4ca4-9232-338d159ddac4" />
 
 ## 🟦 シナリオ A: Cold Start (Standard Flow)
 新しいコンテナを生成して実行する、最も基本的なフローです。
