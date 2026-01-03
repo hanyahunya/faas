@@ -62,7 +62,7 @@
 
 다음 3가지 시나리오에서의 아키텍처 다이어그램 `(1)` ~ `(11)` 상세 흐름입니다.
 
-<img width="1161" height="887" alt="final_arch" src="https://github.com/user-attachments/assets/68aa1d31-5f07-43ec-bb9b-a1dd3f87efa8" />
+<img width="1161" height="887" alt="arch" src="https://github.com/user-attachments/assets/56b6a165-1402-449a-ad98-6cbe91c1be74" />
 
 ## 🟦 시나리오 A: Cold Start (Standard Flow)
 새로운 컨테이너를 생성하여 실행하는 가장 기본적인 흐름입니다.
